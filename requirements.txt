@@ -1,3 +1,7 @@
 opencv-python
 gradio==4.36.1
 gradio-client==1.0.1
+huggingface_hub<1.0
+fastapi==0.112.2
+starlette==0.38.6
+pydantic<2.11
