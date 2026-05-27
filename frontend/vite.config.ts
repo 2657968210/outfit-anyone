@@ -56,7 +56,6 @@ export default defineConfig({
               proxyReq.setHeader("Authorization", `Bearer ${SUPABASE_ACCESS_TOKEN}`);
               proxyReq.setHeader("apikey", SUPABASE_ANON_KEY);
               proxyReq.setHeader("Accept-Profile", "public");
-              console.log("[supabase proxy] URL:", proxyReq.path);
               console.log("[supabase proxy] Authorization: Bearer", SUPABASE_ACCESS_TOKEN);
               console.log("[supabase proxy] apikey:", SUPABASE_ANON_KEY);
             });

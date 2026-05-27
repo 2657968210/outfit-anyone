@@ -48,7 +48,10 @@ async function generateImage(modelInput: string, dressInput: string): Promise<st
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ modelInput, dressInput, numSelected: 1 }),
   });
-  if (!submitRes.ok) throw new Error(`Submit failed: ${submitRes.status}`);
+  if (!submitRes.ok) {
+    const errBody = await submitRes.text().catch(() => "");
+    throw new Error(`Submit failed: ${submitRes.status} — ${errBody}`);
+  }
   const submitJson = await submitRes.json();
   console.log("[generate] submit response:", JSON.stringify(submitJson));
   // Support both {data:{id}} and {data:{taskId}} and top-level {id}
