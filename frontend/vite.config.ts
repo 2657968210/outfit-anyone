@@ -12,6 +12,8 @@ import { loadEnv } from "vite";
 const env = loadEnv("development", process.cwd(), "");
 
 const AUTH_COOKIE_NAME = "sb-oevruodshxkcqvxulhcb-auth-token";
+// Public anon key — loaded from .env.local
+const SUPABASE_ANON_KEY = env["SUPABASE_ANON_KEY"] ?? "";
 const RAW_COOKIE_VALUE = env["AUTH_COOKIE_VALUE"] ?? "";
 const AUTH_COOKIE_VALUE = RAW_COOKIE_VALUE ? encodeURIComponent(RAW_COOKIE_VALUE) : "";
 const ACCESS_TOKEN = (() => {
@@ -50,7 +52,10 @@ export default defineConfig({
           configure: (proxy) => {
             proxy.on("proxyReq", (proxyReq) => {
               proxyReq.setHeader("Authorization", `Bearer ${ACCESS_TOKEN}`);
-              proxyReq.setHeader("apikey", ACCESS_TOKEN);
+              proxyReq.setHeader("apikey", SUPABASE_ANON_KEY);
+              console.log("[supabase proxy] URL:", proxyReq.path);
+              console.log("[supabase proxy] Authorization: Bearer", ACCESS_TOKEN);
+              console.log("[supabase proxy] apikey:", SUPABASE_ANON_KEY);
             });
           },
         },

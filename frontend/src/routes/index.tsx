@@ -1,6 +1,26 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ImagePlus, Database, Sparkles, Loader2 } from "lucide-react";
+
+const SUPABASE_USER_ID = "8a6ce49f-1385-4596-b3bc-f825d35a96c0";
+
+interface Virtual {
+  id: string;
+  url: string;
+  created_at: string;
+}
+
+async function fetchGallery(): Promise<Virtual[]> {
+  try {
+    const res = await fetch(
+      `/supabase/rest/v1/virtuals?select=*&user_id=eq.${SUPABASE_USER_ID}&url=not.is.null&order=created_at.desc&offset=0&limit=20`
+    );
+    if (!res.ok) return [];
+    return (await res.json()) as Virtual[];
+  } catch {
+    return [];
+  }
+}
 
 async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -111,10 +131,9 @@ const garments = [
   "https://storage.outfitanyone.net/home/outfit8.png",
 ];
 
-function UploadBox({ onSelect }: { onSelect: (url: string) => void }) {
+function UploadBox({ value, onSelect }: { value: string | null; onSelect: (url: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,7 +144,6 @@ function UploadBox({ onSelect }: { onSelect: (url: string) => void }) {
     try {
       const base64 = await fileToBase64(file);
       const url = await uploadImage(base64);
-      setPreviewUrl(url);
       onSelect(url);
     } catch (err) {
       setError("Upload failed");
@@ -141,7 +159,7 @@ function UploadBox({ onSelect }: { onSelect: (url: string) => void }) {
     <div
       onClick={() => inputRef.current?.click()}
       className={`rounded-xl border overflow-hidden transition-colors cursor-pointer aspect-[2/1] flex flex-col items-center justify-center gap-2 relative ${
-        previewUrl
+        value && !uploading
           ? "border-emerald-400/60 bg-transparent"
           : "border-white/5 bg-[#1f2937]/60 hover:bg-[#1f2937] text-slate-300"
       }`}
@@ -153,9 +171,9 @@ function UploadBox({ onSelect }: { onSelect: (url: string) => void }) {
         className="hidden"
         onChange={handleFile}
       />
-      {previewUrl ? (
+      {value && !uploading ? (
         <>
-          <img src={previewUrl} alt="uploaded" className="w-full h-full object-cover" />
+          <img src={value} alt="selected" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 text-white">
             <ImagePlus className="w-6 h-6" />
             <span className="text-xs font-medium">Replace</span>
@@ -206,6 +224,13 @@ function Index() {
   const [generating, setGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [gallery, setGallery] = useState<Virtual[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+
+  useEffect(() => {
+    setGalleryLoading(true);
+    fetchGallery().then(setGallery).finally(() => setGalleryLoading(false));
+  }, []);
 
   const handleGenerate = async () => {
     if (!selectedModel || !selectedGarment || generating) return;
@@ -215,6 +240,8 @@ function Index() {
     try {
       const url = await generateImage(selectedModel, selectedGarment);
       setResultUrl(url);
+      // Refresh gallery in background after generation
+      fetchGallery().then(setGallery);
     } catch (err) {
       setGenerateError(err instanceof Error ? err.message : "Generation failed");
     } finally {
@@ -255,7 +282,7 @@ function Index() {
         {/* Sidebar */}
         <aside className="w-[360px] shrink-0 p-6 space-y-5 border-r border-white/5">
           <Section title="Models">
-            <UploadBox onSelect={setSelectedModel} />
+            <UploadBox value={selectedModel} onSelect={setSelectedModel} />
             <div className="grid grid-cols-4 gap-2 mt-2">
               {models.map((s) => (
                 <Thumb key={s} src={s} selected={selectedModel === s} onSelect={() => setSelectedModel(s)} />
@@ -264,7 +291,7 @@ function Index() {
           </Section>
 
           <Section title="Garments">
-            <UploadBox onSelect={setSelectedGarment} />
+            <UploadBox value={selectedGarment} onSelect={setSelectedGarment} />
             <div className="grid grid-cols-4 gap-2 mt-2">
               {garments.map((s) => (
                 <Thumb key={s} src={s} selected={selectedGarment === s} onSelect={() => setSelectedGarment(s)} />
@@ -309,63 +336,91 @@ function Index() {
           )}
         </aside>
 
-        {/* Center — loading / result / preview / hero */}
-        <main className="flex-1 flex items-center justify-center px-6 py-20">
+        {/* Center — loading / result / gallery */}
+        <main className="flex-1 flex flex-col overflow-hidden">
           {generating ? (
-            <div className="flex flex-col items-center gap-4 text-slate-300">
-              <Loader2 className="w-12 h-12 animate-spin text-fuchsia-400" />
-              <p className="text-sm font-medium">Generating your outfit…</p>
+            <div className="flex-1 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4 text-slate-300">
+                <Loader2 className="w-12 h-12 animate-spin text-fuchsia-400" />
+                <p className="text-sm font-medium">Generating your outfit…</p>
+              </div>
             </div>
           ) : resultUrl ? (
-            <div className="flex flex-col items-center gap-3">
-              <div className="text-xs text-slate-400">Generated Result</div>
-              <img
-                src={resultUrl}
-                alt="generated"
-                className="max-h-[70vh] rounded-2xl shadow-2xl object-contain"
-              />
-              <button
-                className="text-xs text-slate-400 hover:text-white transition"
-                onClick={() => setResultUrl(null)}
-              >
-                ← Back
-              </button>
-            </div>
-          ) : selectedModel || selectedGarment ? (
-            <div className="flex gap-8 items-start">
-              {selectedModel && (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="text-xs text-slate-400">Model</div>
-                  <img src={selectedModel} alt="model" className="h-72 rounded-xl object-cover shadow-lg" />
-                </div>
-              )}
-              {selectedGarment && (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="text-xs text-slate-400">Garment</div>
-                  <img src={selectedGarment} alt="garment" className="h-72 rounded-xl object-cover shadow-lg" />
-                </div>
-              )}
+            <div className="flex-1 flex items-center justify-center px-6 py-20">
+              <div className="flex flex-col items-center gap-3">
+                <div className="text-xs text-slate-400">Generated Result</div>
+                <img
+                  src={resultUrl}
+                  alt="generated"
+                  className="max-h-[70vh] rounded-2xl shadow-2xl object-contain"
+                />
+                <button
+                  className="text-xs text-slate-400 hover:text-white transition"
+                  onClick={() => setResultUrl(null)}
+                >
+                  ← Back
+                </button>
+              </div>
             </div>
           ) : (
-            <div className="text-center max-w-2xl">
-              <h1 className="text-5xl font-bold flex items-center justify-center gap-3">
-                <Sparkles className="w-8 h-8 text-cyan-300" />
-                Outfit Anyone
-                <Sparkles className="w-8 h-8 text-cyan-300" />
-              </h1>
-              <p className="mt-6 text-slate-300 leading-relaxed font-medium">
-                Create images for your virtual try-on experience with Outfit Anyone AI Virtual Try-On
-                Image Tool. Choose a model, garment, and generate images in seconds.
-              </p>
-              <button
-                className="mt-8 bg-emerald-500 hover:bg-emerald-400 text-white font-medium px-6 py-3 rounded-lg transition"
-                onClick={() => {
-                  setSelectedModel(models[0]);
-                  setSelectedGarment(garments[0]);
-                }}
-              >
-                Use Sample Model & Garment
-              </button>
+            <div className="flex-1 flex flex-col px-6 py-6 overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-slate-200">Generated Images</h2>
+                <button
+                  onClick={() => {
+                    setGalleryLoading(true);
+                    fetchGallery().then(setGallery).finally(() => setGalleryLoading(false));
+                  }}
+                  className="text-xs text-slate-400 hover:text-white transition"
+                >
+                  ↺ Refresh
+                </button>
+              </div>
+              {galleryLoading ? (
+                <div className="flex-1 flex items-center justify-center py-20">
+                  <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+                </div>
+              ) : gallery.length > 0 ? (
+                <div className="grid grid-cols-3 gap-3">
+                  {gallery.map((item) => (
+                    <div
+                      key={item.id}
+                      className="aspect-[3/4] rounded-xl overflow-hidden bg-[#1f2937] cursor-pointer group"
+                      onClick={() => setResultUrl(item.url)}
+                    >
+                      <img
+                        src={item.url}
+                        alt="generated"
+                        className="w-full h-full object-cover group-hover:opacity-80 transition"
+                        loading="lazy"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center py-20">
+                  <div className="text-center max-w-2xl">
+                    <h1 className="text-5xl font-bold flex items-center justify-center gap-3">
+                      <Sparkles className="w-8 h-8 text-cyan-300" />
+                      Outfit Anyone
+                      <Sparkles className="w-8 h-8 text-cyan-300" />
+                    </h1>
+                    <p className="mt-6 text-slate-300 leading-relaxed font-medium">
+                      Create images for your virtual try-on experience with Outfit Anyone AI Virtual Try-On
+                      Image Tool. Choose a model, garment, and generate images in seconds.
+                    </p>
+                    <button
+                      className="mt-8 bg-emerald-500 hover:bg-emerald-400 text-white font-medium px-6 py-3 rounded-lg transition"
+                      onClick={() => {
+                        setSelectedModel(models[0]);
+                        setSelectedGarment(garments[0]);
+                      }}
+                    >
+                      Use Sample Model & Garment
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </main>
