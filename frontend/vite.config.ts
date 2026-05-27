@@ -5,11 +5,56 @@
 //     error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... } }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { loadEnv } from "vite";
+
+// Load local env vars from .env.local (gitignored via *.local rule)
+// Set AUTH_COOKIE_VALUE in frontend/.env.local for local dev proxy auth
+const env = loadEnv("development", process.cwd(), "");
+
+const AUTH_COOKIE_NAME = "sb-oevruodshxkcqvxulhcb-auth-token";
+const RAW_COOKIE_VALUE = env["AUTH_COOKIE_VALUE"] ?? "";
+const AUTH_COOKIE_VALUE = RAW_COOKIE_VALUE ? encodeURIComponent(RAW_COOKIE_VALUE) : "";
+const ACCESS_TOKEN = (() => {
+  try {
+    return RAW_COOKIE_VALUE ? (JSON.parse(RAW_COOKIE_VALUE) as [string, ...unknown[]])[0] as string : "";
+  } catch {
+    return "";
+  }
+})();
 
 // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
 // @cloudflare/vite-plugin builds from this — wrangler.jsonc main alone is insufficient.
 export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
+  },
+  vite: {
+    server: {
+      proxy: {
+        "/api": {
+          target: "https://www.outfitanyone.net",
+          changeOrigin: true,
+          configure: (proxy) => {
+            proxy.on("proxyReq", (proxyReq) => {
+              proxyReq.setHeader(
+                "Cookie",
+                `${AUTH_COOKIE_NAME}=${AUTH_COOKIE_VALUE}`
+              );
+            });
+          },
+        },
+        "/supabase": {
+          target: "https://oevruodshxkcqvxulhcb.supabase.co",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/supabase/, ""),
+          configure: (proxy) => {
+            proxy.on("proxyReq", (proxyReq) => {
+              proxyReq.setHeader("Authorization", `Bearer ${ACCESS_TOKEN}`);
+              proxyReq.setHeader("apikey", ACCESS_TOKEN);
+            });
+          },
+        },
+      },
+    },
   },
 });
