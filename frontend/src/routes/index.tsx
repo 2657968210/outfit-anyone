@@ -29,17 +29,32 @@ async function generateImage(modelInput: string, dressInput: string): Promise<st
     body: JSON.stringify({ modelInput, dressInput, numSelected: 1 }),
   });
   if (!submitRes.ok) throw new Error(`Submit failed: ${submitRes.status}`);
-  const { data } = (await submitRes.json()) as { data: { id: string } };
-  const genId = data.id;
+  const submitJson = await submitRes.json();
+  console.log("[generate] submit response:", JSON.stringify(submitJson));
+  // Support both {data:{id}} and {data:{taskId}} and top-level {id}
+  const genId: string =
+    submitJson?.data?.id ??
+    submitJson?.data?.taskId ??
+    submitJson?.id ??
+    submitJson?.taskId;
+  if (!genId) throw new Error(`Submit succeeded but no task ID in response: ${JSON.stringify(submitJson)}`);
+  console.log("[generate] task id:", genId);
 
-  // Poll up to 60 times (2 min)
+  // Poll every 5 s, up to 60 times (5 min)
   for (let i = 0; i < 60; i++) {
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 5000));
     const pollRes = await fetch(`/api/gen/image-generate-n/${genId}`);
-    if (!pollRes.ok) throw new Error(`Poll failed: ${pollRes.status}`);
-    const { data: pd } = (await pollRes.json()) as { data: { status: string } };
-    if (pd.status === "failed") throw new Error("Generation failed");
-    if (pd.status === "succeeded") {
+    if (!pollRes.ok) {
+      const errBody = await pollRes.text().catch(() => "");
+      throw new Error(`Poll failed: ${pollRes.status} — ${errBody}`);
+    }
+    const pollJson = await pollRes.json();
+    console.log("[generate] poll response:", JSON.stringify(pollJson));
+    const pd = pollJson?.data ?? pollJson;
+    const status: string = pd?.status ?? "";
+    if (status === "failed") throw new Error("Generation failed");
+    // Only proceed when API returns "succeeded"
+    if (status === "succeeded") {
       // Try Supabase for the URL
       try {
         const supaRes = await fetch(
