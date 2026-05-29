@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ImagePlus, Database, Sparkles, Loader2 } from "lucide-react";
 
-const SUPABASE_USER_ID = "8a6ce49f-1385-4596-b3bc-f825d35a96c0";
+const SUPABASE_USER_ID = import.meta.env.VITE_SUPABASE_USER_ID as string;
 
 interface Virtual {
   id: string;
