@@ -14,8 +14,6 @@ const env = loadEnv("development", process.cwd(), "");
 const AUTH_COOKIE_NAME = "sb-oevruodshxkcqvxulhcb-auth-token";
 // Public anon key — loaded from .env.local
 const SUPABASE_ANON_KEY = env["SUPABASE_ANON_KEY"] ?? "";
-// Supabase Bearer token — set independently from AUTH_COOKIE_VALUE
-const SUPABASE_ACCESS_TOKEN = env["SUPABASE_ACCESS_TOKEN"] ?? "";
 const RAW_COOKIE_VALUE = env["AUTH_COOKIE_VALUE"] ?? "";
 const AUTH_COOKIE_VALUE = RAW_COOKIE_VALUE ? encodeURIComponent(RAW_COOKIE_VALUE) : "";
 const ACCESS_TOKEN = (() => {
@@ -25,6 +23,8 @@ const ACCESS_TOKEN = (() => {
     return "";
   }
 })();
+// Supabase Bearer token — derived from AUTH_COOKIE_VALUE[0]
+const SUPABASE_ACCESS_TOKEN = ACCESS_TOKEN;
 
 // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
 // @cloudflare/vite-plugin builds from this — wrangler.jsonc main alone is insufficient.
