@@ -115,6 +115,7 @@ export const Route = createFileRoute("/")({
 
 const models = [
   `${LOCAL_BASE}/images/model1.jpg`,
+  `${LOCAL_BASE}/images/model2.jpg`,
   "https://storage.outfitanyone.net/home/example1.png",
   "https://storage.outfitanyone.net/home/example2.jpg",
   "https://storage.outfitanyone.net/home/example3.png",
@@ -127,6 +128,7 @@ const models = [
 
 const garments = [
   `${LOCAL_BASE}/images/dress1.jpg`,
+  `${LOCAL_BASE}/images/dress2.jpg`,
   "https://storage.outfitanyone.net/home/outfit1.jpg",
   "https://storage.outfitanyone.net/home/outfit2.jpg",
   "https://storage.outfitanyone.net/home/outfit3.png",
