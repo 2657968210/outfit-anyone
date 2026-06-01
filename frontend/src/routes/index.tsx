@@ -161,7 +161,7 @@ function UploadBox({ value, onSelect }: { value: string | null; onSelect: (url: 
   return (
     <div
       onClick={() => inputRef.current?.click()}
-      className={`rounded-xl border overflow-hidden transition-colors cursor-pointer aspect-[2/1] flex flex-col items-center justify-center gap-2 relative ${
+      className={`rounded-xl border overflow-hidden transition-colors cursor-pointer h-36 flex flex-col items-center justify-center gap-2 relative ${
         value && !uploading
           ? "border-emerald-400/60 bg-transparent"
           : "border-white/5 bg-[#1f2937]/60 hover:bg-[#1f2937] text-slate-300"
@@ -176,7 +176,7 @@ function UploadBox({ value, onSelect }: { value: string | null; onSelect: (url: 
       />
       {value && !uploading ? (
         <>
-          <img src={value} alt="selected" className="w-full h-full object-cover" />
+          <img src={value} alt="selected" className="h-full w-auto max-w-full object-contain" />
           <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 text-white">
             <ImagePlus className="w-6 h-6" />
             <span className="text-xs font-medium">Replace</span>
