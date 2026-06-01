@@ -115,7 +115,7 @@ export const Route = createFileRoute("/")({
 
 const models = [
   `${LOCAL_BASE}/images/model1.jpg`,
-  `${LOCAL_BASE}/images/model2.jpg`,
+  `${LOCAL_BASE}/images/model2.png`,
   "https://storage.outfitanyone.net/home/example1.png",
   "https://storage.outfitanyone.net/home/example2.jpg",
   "https://storage.outfitanyone.net/home/example3.png",
