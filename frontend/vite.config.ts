@@ -5,11 +5,18 @@ const env = loadEnv("development", process.cwd(), "");
 
 const AUTH_COOKIE_NAME = "sb-oevruodshxkcqvxulhcb-auth-token";
 const SUPABASE_ANON_KEY = env["SUPABASE_ANON_KEY"] ?? "";
-const SUPABASE_REFRESH_TOKEN = env["SUPABASE_REFRESH_TOKEN"] ?? "";
+const RAW_COOKIE_VALUE = env["AUTH_COOKIE_VALUE"] ?? "";
+const SUPABASE_REFRESH_TOKEN = (() => {
+  try { return RAW_COOKIE_VALUE ? (JSON.parse(RAW_COOKIE_VALUE) as string[])[1] ?? "" : ""; }
+  catch { return ""; }
+})();
 
-// Mutable — updated each time refreshTokens() runs
-let currentAccessToken = "";
-let currentCookieValue = "";
+// Mutable — updated each time refreshTokens() runs; seeded from .env.local on startup
+let currentAccessToken = (() => {
+  try { return RAW_COOKIE_VALUE ? (JSON.parse(RAW_COOKIE_VALUE) as [string])[0] : ""; }
+  catch { return ""; }
+})();
+let currentCookieValue = RAW_COOKIE_VALUE ? encodeURIComponent(RAW_COOKIE_VALUE) : "";
 
 async function refreshTokens(): Promise<void> {
   if (!SUPABASE_REFRESH_TOKEN) {
@@ -60,8 +67,6 @@ export default defineConfig({
       {
         name: "auth-refresh",
         configureServer(server) {
-          // Auto-refresh on dev server start
-          refreshTokens();
           // Endpoint called by the UI "Refresh Token" button
           server.middlewares.use("/api-refresh-token", async (_req, res) => {
             await refreshTokens();
