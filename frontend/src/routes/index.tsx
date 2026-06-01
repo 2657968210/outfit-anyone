@@ -229,11 +229,25 @@ function Index() {
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [gallery, setGallery] = useState<Virtual[]>([]);
   const [galleryLoading, setGalleryLoading] = useState(false);
+  const [tokenRefreshing, setTokenRefreshing] = useState(false);
+  const [tokenRefreshed, setTokenRefreshed] = useState(false);
 
   useEffect(() => {
     setGalleryLoading(true);
     fetchGallery().then(setGallery).finally(() => setGalleryLoading(false));
   }, []);
+
+  const handleRefreshToken = async () => {
+    setTokenRefreshing(true);
+    setTokenRefreshed(false);
+    try {
+      await fetch("/api-refresh-token");
+      setTokenRefreshed(true);
+      setTimeout(() => setTokenRefreshed(false), 3000);
+    } finally {
+      setTokenRefreshing(false);
+    }
+  };
 
   const handleGenerate = async () => {
     if (!selectedModel || !selectedGarment || generating) return;
@@ -274,9 +288,14 @@ function Index() {
           <button className="text-sm text-slate-300 hover:text-white flex items-center gap-1">
             🌐 EN
           </button>
-          <button className="bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition">
-            Get Started -- It's Free
-          </button>
+          <button
+              onClick={handleRefreshToken}
+              disabled={tokenRefreshing}
+              className="bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition disabled:opacity-60 flex items-center gap-1.5"
+            >
+              {tokenRefreshing && <Loader2 className="w-4 h-4 animate-spin" />}
+              {tokenRefreshed ? "✓ Token Refreshed" : tokenRefreshing ? "Refreshing…" : "🔄 Refresh Token"}
+            </button>
         </div>
       </header>
 
