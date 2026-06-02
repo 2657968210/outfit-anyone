@@ -14,7 +14,7 @@ interface Virtual {
 async function fetchGallery(): Promise<Virtual[]> {
   try {
     const res = await fetch(
-      `/supabase/rest/v1/virtuals?select=*&user_id=eq.${SUPABASE_USER_ID}&url=not.is.null&order=created_at.desc&offset=0&limit=20`
+      `/supabase/rest/v1/virtuals?select=*&user_id=eq.${SUPABASE_USER_ID}&url=not.is.null&order=created_at.desc&offset=0&limit=10`
     );
     if (!res.ok) return [];
     return (await res.json()) as Virtual[];
