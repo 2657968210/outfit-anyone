@@ -3,7 +3,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ImagePlus, Database, Sparkles, Loader2 } from "lucide-react";
 
 const SUPABASE_USER_ID = import.meta.env.VITE_SUPABASE_USER_ID as string;
-const LOCAL_BASE = typeof window !== "undefined" ? window.location.origin : "";
 
 interface Virtual {
   id: string;
@@ -114,8 +113,8 @@ export const Route = createFileRoute("/")({
 });
 
 const models = [
-  `${LOCAL_BASE}/images/model1.jpg`,
-  `${LOCAL_BASE}/images/model2.png`,
+  "/images/model1.jpg",
+  "/images/model2.png",
   "https://storage.outfitanyone.net/home/example1.png",
   "https://storage.outfitanyone.net/home/example2.jpg",
   "https://storage.outfitanyone.net/home/example3.png",
@@ -127,8 +126,8 @@ const models = [
 ];
 
 const garments = [
-  `${LOCAL_BASE}/images/dress1.jpg`,
-  `${LOCAL_BASE}/images/dress2.jpg`,
+  "/images/dress1.jpg",
+  "/images/dress2.jpg",
   "https://storage.outfitanyone.net/home/outfit1.jpg",
   "https://storage.outfitanyone.net/home/outfit2.jpg",
   "https://storage.outfitanyone.net/home/outfit3.png",
@@ -260,7 +259,10 @@ function Index() {
     setResultUrl(null);
     setGenerateError(null);
     try {
-      const url = await generateImage(selectedModel, selectedGarment);
+      // 提交时将相对路径转为绝对 URL（API 需要可访问的完整地址）
+      const resolveUrl = (path: string) =>
+        path.startsWith("/") ? `${window.location.origin}${path}` : path;
+      const url = await generateImage(resolveUrl(selectedModel), resolveUrl(selectedGarment));
       setResultUrl(url);
       // Refresh gallery in background after generation
       fetchGallery().then(setGallery);
