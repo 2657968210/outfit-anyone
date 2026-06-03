@@ -10,15 +10,18 @@ interface Virtual {
   created_at: string;
 }
 
-async function fetchGallery(): Promise<Virtual[]> {
+async function fetchGallery(): Promise<{ data: Virtual[]; error: string | null }> {
   try {
     const res = await fetch(
       `/supabase/rest/v1/virtuals?select=*&user_id=eq.${SUPABASE_USER_ID}&url=not.is.null&order=created_at.desc&offset=0&limit=10`
     );
-    if (!res.ok) return [];
-    return (await res.json()) as Virtual[];
-  } catch {
-    return [];
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      return { data: [], error: `Supabase ${res.status}: ${body}` };
+    }
+    return { data: (await res.json()) as Virtual[], error: null };
+  } catch (e) {
+    return { data: [], error: String(e) };
   }
 }
 
@@ -233,13 +236,20 @@ function Index() {
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [gallery, setGallery] = useState<Virtual[]>([]);
   const [galleryLoading, setGalleryLoading] = useState(false);
+  const [galleryError, setGalleryError] = useState<string | null>(null);
   const [tokenRefreshing, setTokenRefreshing] = useState(false);
   const [tokenRefreshed, setTokenRefreshed] = useState(false);
 
-  useEffect(() => {
+  const loadGallery = () => {
     setGalleryLoading(true);
-    fetchGallery().then(setGallery).finally(() => setGalleryLoading(false));
-  }, []);
+    setGalleryError(null);
+    fetchGallery().then(({ data, error }) => {
+      setGallery(data);
+      setGalleryError(error);
+    }).finally(() => setGalleryLoading(false));
+  };
+
+  useEffect(() => { loadGallery(); }, []);
 
   const handleRefreshToken = async () => {
     setTokenRefreshing(true);
@@ -249,8 +259,7 @@ function Index() {
       setTokenRefreshed(true);
       setTimeout(() => setTokenRefreshed(false), 3000);
       // Token 刷新后同步刷新画廊
-      setGalleryLoading(true);
-      fetchGallery().then(setGallery).finally(() => setGalleryLoading(false));
+      loadGallery();
     } finally {
       setTokenRefreshing(false);
     }
@@ -268,7 +277,7 @@ function Index() {
       const url = await generateImage(resolveUrl(selectedModel), resolveUrl(selectedGarment));
       setResultUrl(url);
       // Refresh gallery in background after generation
-      fetchGallery().then(setGallery);
+      fetchGallery().then(({ data }) => setGallery(data));
     } catch (err) {
       setGenerateError(err instanceof Error ? err.message : "Generation failed");
     } finally {
@@ -399,15 +408,15 @@ function Index() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold text-slate-200">Generated Images</h2>
                 <button
-                  onClick={() => {
-                    setGalleryLoading(true);
-                    fetchGallery().then(setGallery).finally(() => setGalleryLoading(false));
-                  }}
+                  onClick={loadGallery}
                   className="text-xs text-slate-400 hover:text-white transition"
                 >
                   ↺ Refresh
                 </button>
               </div>
+              {galleryError && (
+                <p className="text-xs text-red-400 mb-3 px-1 break-all">{galleryError}</p>
+              )}
               {galleryLoading ? (
                 <div className="flex-1 flex items-center justify-center py-20">
                   <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
