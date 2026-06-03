@@ -115,27 +115,27 @@ export const Route = createFileRoute("/")({
 const models = [
   "/images/model1.jpg",
   "/images/model2.png",
-  "https://storage.outfitanyone.net/home/example1.png",
-  "https://storage.outfitanyone.net/home/example2.jpg",
-  "https://storage.outfitanyone.net/home/example3.png",
-  "https://storage.outfitanyone.net/home/example4.png",
-  "https://storage.outfitanyone.net/home/example5.png",
-  "https://storage.outfitanyone.net/home/example6.jpg",
-  "https://storage.outfitanyone.net/home/example7.jpg",
-  "https://storage.outfitanyone.net/home/example8.png",
+  "/images/example1.png",
+  "/images/example2.jpg",
+  "/images/example3.png",
+  "/images/example4.png",
+  "/images/example5.png",
+  "/images/example6.jpg",
+  "/images/example7.jpg",
+  "/images/example8.png",
 ];
 
 const garments = [
   "/images/dress1.jpg",
   "/images/dress2.jpg",
-  "https://storage.outfitanyone.net/home/outfit1.jpg",
-  "https://storage.outfitanyone.net/home/outfit2.jpg",
-  "https://storage.outfitanyone.net/home/outfit3.png",
-  "https://storage.outfitanyone.net/home/outfit4.jpg",
-  "https://storage.outfitanyone.net/home/outfit5.png",
-  "https://storage.outfitanyone.net/home/outfit6.png",
-  "https://storage.outfitanyone.net/home/outfit7.png",
-  "https://storage.outfitanyone.net/home/outfit8.png",
+  "/images/outfit1.jpg",
+  "/images/outfit2.jpg",
+  "/images/outfit3.png",
+  "/images/outfit4.jpg",
+  "/images/outfit5.png",
+  "/images/outfit6.png",
+  "/images/outfit7.png",
+  "/images/outfit8.png",
 ];
 
 function UploadBox({ value, onSelect }: { value: string | null; onSelect: (url: string) => void }) {
