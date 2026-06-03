@@ -111,6 +111,7 @@ export default defineConfig({
       },
     ],
     server: {
+      allowedHosts: ["outfit.wal-land.com.cn"],
       proxy: {
         "/api": {
           target: "https://www.outfitanyone.net",
