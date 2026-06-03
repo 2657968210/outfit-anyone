@@ -1,26 +1,57 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { loadEnv } from "vite";
+import fs from "fs";
+import path from "path";
 
 const env = loadEnv("development", process.cwd(), "");
 
 const AUTH_COOKIE_NAME = "sb-oevruodshxkcqvxulhcb-auth-token";
 const SUPABASE_ANON_KEY = env["SUPABASE_ANON_KEY"] ?? "";
-const RAW_COOKIE_VALUE = env["AUTH_COOKIE_VALUE"] ?? "";
-const SUPABASE_REFRESH_TOKEN = (() => {
-  try { return RAW_COOKIE_VALUE ? (JSON.parse(RAW_COOKIE_VALUE) as string[])[1] ?? "" : ""; }
-  catch { return ""; }
-})();
+const TOKEN_FILE = path.resolve(process.cwd(), "public/json", `${AUTH_COOKIE_NAME}.json`);
 
-// Mutable — updated each time refreshTokens() runs; seeded from .env.local on startup
-let currentAccessToken = (() => {
-  try { return RAW_COOKIE_VALUE ? (JSON.parse(RAW_COOKIE_VALUE) as [string])[0] : ""; }
-  catch { return ""; }
-})();
-let currentCookieValue = RAW_COOKIE_VALUE ? encodeURIComponent(RAW_COOKIE_VALUE) : "";
+// 读取已保存的 token 文件（优先于 .env.local）
+function readTokenFile(): string[] | null {
+  try {
+    if (fs.existsSync(TOKEN_FILE)) {
+      const arr = JSON.parse(fs.readFileSync(TOKEN_FILE, "utf-8")) as string[];
+      if (Array.isArray(arr) && arr[0]) {
+        console.log("[auth] Loaded tokens from", TOKEN_FILE);
+        return arr;
+      }
+    }
+  } catch {}
+  return null;
+}
+
+function parseEnvCookieArr(): string[] | null {
+  try {
+    const raw = env["AUTH_COOKIE_VALUE"] ?? "";
+    if (!raw) return null;
+    const arr = JSON.parse(raw) as string[];
+    return Array.isArray(arr) ? arr : null;
+  } catch { return null; }
+}
+
+// JSON 文件优先，否则回退 .env.local
+const seedArr = readTokenFile() ?? parseEnvCookieArr() ?? [];
+
+let currentAccessToken  = (seedArr[0] as string | undefined) ?? "";
+let currentRefreshToken = (seedArr[1] as string | undefined) ?? "";
+let currentCookieValue  = seedArr.length ? encodeURIComponent(JSON.stringify(seedArr)) : "";
+
+function saveTokenFile(arr: (string | null)[]): void {
+  try {
+    fs.mkdirSync(path.dirname(TOKEN_FILE), { recursive: true });
+    fs.writeFileSync(TOKEN_FILE, JSON.stringify(arr), "utf-8");
+    console.log("[auth] Token saved to", TOKEN_FILE);
+  } catch (e) {
+    console.error("[auth] Failed to save token file:", e);
+  }
+}
 
 async function refreshTokens(): Promise<void> {
-  if (!SUPABASE_REFRESH_TOKEN) {
-    console.warn("[auth] SUPABASE_REFRESH_TOKEN not set in .env.local");
+  if (!currentRefreshToken) {
+    console.warn("[auth] No refresh token available (set AUTH_COOKIE_VALUE in .env.local)");
     return;
   }
   try {
@@ -33,18 +64,21 @@ async function refreshTokens(): Promise<void> {
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         },
-        body: JSON.stringify({ refresh_token: SUPABASE_REFRESH_TOKEN }),
+        body: JSON.stringify({ refresh_token: currentRefreshToken }),
       }
     );
     if (!res.ok) {
       const err = await res.text().catch(() => "");
-      console.error(`[auth] Token refresh failed: ${res.status} — ${err}`);
+      console.error(`[auth] Token refresh failed: ${res.status} - ${err}`);
       return;
     }
     const data = (await res.json()) as { access_token: string; refresh_token?: string };
-    currentAccessToken = data.access_token;
-    const cookieArr = [data.access_token, data.refresh_token ?? SUPABASE_REFRESH_TOKEN, null, null, null];
-    currentCookieValue = encodeURIComponent(JSON.stringify(cookieArr));
+    const newRefresh = data.refresh_token ?? currentRefreshToken;
+    currentAccessToken  = data.access_token;
+    currentRefreshToken = newRefresh;
+    const cookieArr: (string | null)[] = [data.access_token, newRefresh, null, null, null];
+    currentCookieValue  = encodeURIComponent(JSON.stringify(cookieArr));
+    saveTokenFile(cookieArr);
     const exp = (() => {
       try {
         const payload = JSON.parse(atob(data.access_token.split(".")[1])) as { exp: number };
@@ -57,7 +91,7 @@ async function refreshTokens(): Promise<void> {
   }
 }
 
-// Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
+// Redirect TanStack Start bundled server entry to src/server.ts (SSR error wrapper).
 export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },

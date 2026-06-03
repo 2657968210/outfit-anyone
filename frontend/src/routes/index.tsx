@@ -248,6 +248,9 @@ function Index() {
       await fetch("/api-refresh-token");
       setTokenRefreshed(true);
       setTimeout(() => setTokenRefreshed(false), 3000);
+      // Token 刷新后同步刷新画廊
+      setGalleryLoading(true);
+      fetchGallery().then(setGallery).finally(() => setGalleryLoading(false));
     } finally {
       setTokenRefreshing(false);
     }
